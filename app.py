@@ -30,22 +30,20 @@ def download_yolo_model():
 download_yolo_model()
 model = YOLO(MODEL_PATH)
 
-# Open webcam
-cap = cv2.VideoCapture(0)
-if not cap.isOpened():
-    print("Error: Could not access the webcam.")
-
 @app.websocket("/video_feed")
 async def video_feed(websocket: WebSocket):
     await websocket.accept()
     
     try:
         while True:
-            ret, frame = cap.read()
-            if not ret:
-                print("Error: Failed to read from camera.")
-                break
-            
+            # Receive frame from client
+            data = await websocket.receive_json()
+            frame_data = base64.b64decode(data["frame"])
+
+            # Convert to OpenCV format
+            nparr = np.frombuffer(frame_data, np.uint8)
+            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
             # Run YOLOv8 model
             results = model(frame)
             
@@ -59,19 +57,14 @@ async def video_feed(websocket: WebSocket):
                     cv2.putText(frame, f"{class_name} ({distance}m)", (x1, y1 - 10),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
             
-            # Encode frame to send over WebSocket
+            # Encode frame to send back
             _, buffer = cv2.imencode(".jpg", frame)
-            frame_data = base64.b64encode(buffer).decode()
+            processed_frame_data = base64.b64encode(buffer).decode()
             
-            # Send frame
-            await websocket.send_json({"frame": frame_data})
-            await asyncio.sleep(0.03)  # Reduce load
+            # Send processed frame back
+            await websocket.send_json({"frame": processed_frame_data})
+
     except Exception as e:
         print(f"WebSocket error: {e}")
     finally:
         await websocket.close()
-
-@app.on_event("shutdown")
-def shutdown():
-    cap.release()
-    print("Camera released.")
