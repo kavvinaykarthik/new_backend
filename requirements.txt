@@ -5,3 +5,4 @@ ultralytics
 opencv-python
 numpy
 python-multipart
+websockets
