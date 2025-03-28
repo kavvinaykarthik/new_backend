@@ -1,9 +1,6 @@
-fastapi
-uvicorn
-torch
-ultralytics
-opencv-python-headless
+streamlit
+opencv-python-headless  # Avoids GUI-related errors
 numpy
-python-multipart
-websockets
+mediapipe
 requests
+simpleaudio
